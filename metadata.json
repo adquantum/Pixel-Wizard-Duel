@@ -1,0 +1,5 @@
+{
+  "name": "Pixel Wizard Duel",
+  "description": "A 2D pixel-art turn-based card battler inspired by Wizard101 mechanics, featuring pip management, school-specific spells, and blade/trap stacking.",
+  "requestFramePermissions": []
+}
