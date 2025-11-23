@@ -26,6 +26,9 @@ export interface Card {
   dotDamage?: number;
   dotDuration?: number;
   
+  // Aura
+  duration?: number;
+  
   isAoe?: boolean;
   icon: string; // NOW A URL (SVG Data URI or Path)
   assetUrl?: string; // Card Main Illustration
@@ -40,7 +43,7 @@ export interface Buff {
   id: string;
   name: string;
   nameCN?: string;
-  type: 'BLADE' | 'TRAP' | 'SHIELD' | 'WEAKNESS' | 'REGEN' | 'DOT';
+  type: 'BLADE' | 'TRAP' | 'SHIELD' | 'WEAKNESS' | 'REGEN' | 'DOT' | 'AURA';
   value: number;
   school: School | 'UNIVERSAL';
   duration: number;
@@ -67,7 +70,7 @@ export interface GameState {
   hand: Card[];
   discard: Card[];
   turn: number;
-  phase: 'SCHOOL_SELECTION' | 'LOBBY' | 'DECK_BUILDING' | 'PLAYER_INPUT' | 'ANIMATING' | 'ENEMY_THINKING' | 'ENEMY_ACTING' | 'VICTORY' | 'DEFEAT';
+  phase: 'SCHOOL_SELECTION' | 'LOBBY' | 'DECK_BUILDING' | 'ART_GENERATION' | 'PLAYER_INPUT' | 'ANIMATING' | 'ENEMY_THINKING' | 'ENEMY_ACTING' | 'VICTORY' | 'DEFEAT';
   messages: string[];
   lastAction?: {
     card: Card;

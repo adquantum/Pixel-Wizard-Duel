@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { GoogleGenAI } from "@google/genai";
 import { Unit, Card, GameState, Buff, School, Language } from './types';
 import { 
     CARD_DATABASE, 
@@ -61,11 +62,43 @@ export default function App() {
   const [floatingText, setFloatingText] = useState<{target: string, text: string, color: string} | null>(null);
   const [animatingUnitId, setAnimatingUnitId] = useState<string | null>(null);
   const [flyingCard, setFlyingCard] = useState<{ card: Card, from: 'player' | 'enemy' } | null>(null);
-  const [flyingCardError, setFlyingCardError] = useState(false); // NEW: Error state for flying card
+  const [flyingCardError, setFlyingCardError] = useState(false);
   const [availableCollection, setAvailableCollection] = useState<Card[]>([]);
   const [editDeck, setEditDeck] = useState<Card[]>([]);
 
+  // Art Gen State
+  const [prompt, setPrompt] = useState("");
+  const [imgRes, setImgRes] = useState<'1K'|'2K'|'4K'>('1K');
+  const [genImg, setGenImg] = useState<string | null>(null);
+  const [loadingImg, setLoadingImg] = useState(false);
+
   const t = TRANSLATIONS[language];
+
+  const handleGeneratePixelAvatar = async () => {
+      if (!prompt) return;
+      setLoadingImg(true);
+      setGenImg(null);
+      try {
+          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          const response = await ai.models.generateContent({
+              model: 'gemini-3-pro-image-preview',
+              contents: { parts: [{ text: `pixel art style, 8-bit retro game avatar, white background, distinct pixels, ${prompt}` }] },
+              config: { imageConfig: { imageSize: imgRes, aspectRatio: "1:1" } }
+          });
+          
+          for (const part of response.candidates[0].content.parts) {
+              if (part.inlineData) {
+                  const base64 = part.inlineData.data;
+                  setGenImg(`data:image/png;base64,${base64}`);
+                  break;
+              }
+          }
+      } catch (e) {
+          console.error(e);
+          addLog("Failed to generate image.");
+      }
+      setLoadingImg(false);
+  };
 
   const handleSchoolSelect = (school: School) => {
       const savedDeckStr = localStorage.getItem(STORAGE_PREFIX + school);
@@ -83,7 +116,6 @@ export default function App() {
       }
       if (startDeck.length === 0) startDeck = GET_STARTER_DECK(school);
 
-      // Map school to specific avatar asset
       const avatarKey = `${school}_WIZARD` as keyof typeof AVATAR_ASSETS;
       const playerWithSchool: Unit = {
           ...gameState.player,
@@ -175,7 +207,6 @@ export default function App() {
     const casterId = casterIsPlayer ? 'player' : 'enemy';
     const targetId = casterIsPlayer ? 'enemy' : 'player';
     
-    // Initial state reference for deduction, but we need live state for calculation in loops
     let currentCaster = casterIsPlayer ? gameState.player : gameState.enemy;
     let currentTarget = casterIsPlayer ? gameState.enemy : gameState.player;
 
@@ -185,11 +216,10 @@ export default function App() {
     }
 
     setFlyingCard({ card, from: casterIsPlayer ? 'player' : 'enemy' });
-    setFlyingCardError(false); // Reset error on new card
+    setFlyingCardError(false); 
     await new Promise(r => setTimeout(r, 600)); 
     setFlyingCard(null);
 
-    // Deduct Pips
     const cost = calculatePipCost(currentCaster, card.pips, card.school);
     if (cost) {
         updateUnit(casterId, u => ({
@@ -204,23 +234,17 @@ export default function App() {
     addLog(`${currentCaster.name} casts ${language === 'CN' ? card.nameCN : card.name}!`);
     await new Promise(r => setTimeout(r, 800)); 
 
-    // RE-FETCH latest state for effect application (in case pip update changed something, though unlikely to affect stats)
     setGameState(prev => {
        currentCaster = casterIsPlayer ? prev.player : prev.enemy;
        currentTarget = casterIsPlayer ? prev.enemy : prev.player;
        return prev;
     });
 
-    // 1. HANDLE SELF DAMAGE (Immolate / Sacrifice)
     if (card.selfDamage) {
          const selfDmg = card.selfDamage;
          showFloatingText(casterId, `-${selfDmg}`, '#ef4444');
-         // Simple HP reduction for prototype, ignoring own shields/traps for simplicity
          updateUnit(casterId, u => ({ ...u, currentHp: Math.max(0, u.currentHp - selfDmg) }));
-         // Wait for visual
          await new Promise(r => setTimeout(r, 600));
-         
-         // Refresh Caster state after self damage
          setGameState(prev => {
              currentCaster = casterIsPlayer ? prev.player : prev.enemy;
              return prev;
@@ -229,41 +253,26 @@ export default function App() {
 
     if (card.type === 'ATTACK') {
         if (card.multiHits && card.multiHits.length > 0) {
-            // --- MULTI HIT LOGIC (HYDRA) ---
-            // We need to process hits sequentially. 
-            // Since we can't easily await state updates, we simulate the buff consumption locally for calculation
-            // and fire updates to the UI.
             let tempCaster = { ...currentCaster };
             let tempTarget = { ...currentTarget };
-
             for (const hit of card.multiHits) {
-                 // Calculate damage for this hit
                  const dmg = calculateDamage(hit.damage, tempCaster, tempTarget, hit.school);
                  const usedBuffIds = getUsedBuffIds(tempCaster, tempTarget, hit.school, true);
-                 
-                 // Apply to UI State
                  removeBuffs(usedBuffIds);
                  showFloatingText(targetId, `-${dmg}`, SCHOOL_COLORS[hit.school]);
                  updateUnit(targetId, u => ({ ...u, currentHp: Math.max(0, u.currentHp - dmg) }));
-                 
-                 // Update Local Temp State for next iteration logic (so shields don't get used twice)
                  tempTarget.buffs = tempTarget.buffs.filter(b => !usedBuffIds.includes(b.id));
                  tempCaster.buffs = tempCaster.buffs.filter(b => !usedBuffIds.includes(b.id));
-
                  await new Promise(r => setTimeout(r, 600));
             }
             setAnimatingUnitId(null);
-
         } else {
-            // --- STANDARD HIT ---
             const damage = calculateDamage(card.damage || 0, currentCaster, currentTarget, card.school);
             const usedBuffIds = getUsedBuffIds(currentCaster, currentTarget, card.school, true);
             removeBuffs(usedBuffIds);
             setAnimatingUnitId(null);
-            
             showFloatingText(targetId, `-${damage}`, '#ef4444');
             updateUnit(targetId, u => ({ ...u, currentHp: Math.max(0, u.currentHp - damage) }));
-
             if (card.drain) {
                 const healAmount = Math.floor(damage * 0.5);
                 setTimeout(() => {
@@ -272,23 +281,18 @@ export default function App() {
                 }, 500);
             }
         }
-    } 
-    
-    else if (card.type === 'HEAL') {
+    } else if (card.type === 'HEAL') {
         const heal = card.heal || 0;
         showFloatingText(casterId, `+${heal}`, '#22c55e');
         updateUnit(casterId, u => ({ ...u, currentHp: Math.min(u.maxHp, u.currentHp + heal) }));
         setAnimatingUnitId(null);
-    } 
-    
-    else if (['BLADE', 'TRAP', 'SHIELD', 'WEAKNESS', 'GLOBAL'].includes(card.type)) {
-        // Logic for Multi-Buffs (Tri-Blades) or Single Buff
+    } else if (['BLADE', 'TRAP', 'SHIELD', 'WEAKNESS', 'GLOBAL', 'AURA'].includes(card.type)) {
         const schoolsToApply = card.multiBuffs || [card.buffSchool || (card.school === 'ICE' && card.type === 'SHIELD' ? 'UNIVERSAL' : card.school)];
-        
         for (const buffSchool of schoolsToApply) {
              const buffTargetId = (card.type === 'TRAP' || card.type === 'WEAKNESS') ? targetId : casterId;
              const isOutgoing = (card.type === 'BLADE' || card.type === 'WEAKNESS');
-             
+             const duration = card.type === 'AURA' ? (card.duration || 4) : 1;
+
              const buff: Buff = {
                 id: generateId(), 
                 name: card.name, 
@@ -296,11 +300,10 @@ export default function App() {
                 type: card.type as any, 
                 value: card.buffValue || card.shieldValue || 0, 
                 school: buffSchool as any, 
-                duration: 1, 
+                duration: duration, 
                 isOutgoing
             };
             updateUnit(buffTargetId, u => ({ ...u, buffs: [...u.buffs, buff] }));
-            // Small stagger delay if multiple
             if (schoolsToApply.length > 1) await new Promise(r => setTimeout(r, 150));
         }
 
@@ -370,13 +373,18 @@ export default function App() {
   };
 
   useEffect(() => {
-      if (gameState.enemy.currentHp <= 0 && !['SCHOOL_SELECTION','LOBBY'].includes(gameState.phase)) setGameState(p => ({ ...p, phase: 'VICTORY' }));
-      else if (gameState.player.currentHp <= 0 && !['SCHOOL_SELECTION','LOBBY'].includes(gameState.phase)) setGameState(p => ({ ...p, phase: 'DEFEAT' }));
+      if (gameState.enemy.currentHp <= 0 && !['SCHOOL_SELECTION','LOBBY','ART_GENERATION'].includes(gameState.phase)) setGameState(p => ({ ...p, phase: 'VICTORY' }));
+      else if (gameState.player.currentHp <= 0 && !['SCHOOL_SELECTION','LOBBY','ART_GENERATION'].includes(gameState.phase)) setGameState(p => ({ ...p, phase: 'DEFEAT' }));
   }, [gameState.enemy.currentHp, gameState.player.currentHp]);
 
 
   const endRound = () => {
       addLog("--- Round End ---");
+      const tickBuffs = (u: Unit): Unit => ({
+          ...u,
+          buffs: u.buffs.map(b => (b.type === 'AURA' || b.duration > 1 ? { ...b, duration: b.duration - 1 } : b)).filter(b => b.duration > 0 || b.type !== 'AURA')
+      });
+
       const addPip = (u: Unit): Unit => {
           const ppChance = 0.4; 
           const getsPower = Math.random() < ppChance;
@@ -386,8 +394,8 @@ export default function App() {
       };
       setGameState(prev => ({
           ...prev,
-          player: addPip(prev.player),
-          enemy: addPip(prev.enemy),
+          player: tickBuffs(addPip(prev.player)),
+          enemy: tickBuffs(addPip(prev.enemy)),
           turn: prev.turn + 1,
           phase: 'PLAYER_INPUT'
       }));
@@ -438,10 +446,77 @@ export default function App() {
                   <h1 className="text-4xl text-white pixel-font mb-4">{t.WELCOME}, Wizard</h1>
                   
                   <div className="flex gap-8">
-                      <button onClick={startBattle} className="w-64 h-24 bg-red-800 border-4 border-red-600 hover:bg-red-700 text-2xl pixel-font shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none">{t.ENTER_DUEL}</button>
-                      <button onClick={enterDeckBuilder} className="w-64 h-24 bg-indigo-800 border-4 border-indigo-600 hover:bg-indigo-700 text-2xl pixel-font shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none">{t.EDIT_DECK}</button>
+                      <button onClick={startBattle} className="w-48 h-20 bg-red-800 border-4 border-red-600 hover:bg-red-700 text-xl pixel-font shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none">{t.ENTER_DUEL}</button>
+                      <button onClick={enterDeckBuilder} className="w-48 h-20 bg-indigo-800 border-4 border-indigo-600 hover:bg-indigo-700 text-xl pixel-font shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none">{t.EDIT_DECK}</button>
+                      <button onClick={() => setGameState(p => ({...p, phase: 'ART_GENERATION'}))} className="w-48 h-20 bg-purple-800 border-4 border-purple-600 hover:bg-purple-700 text-xl pixel-font shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none">{t.PIXEL_STUDIO}</button>
                   </div>
                   <div className="text-gray-500 mt-4 font-mono text-sm">{t.DECK_SIZE}: {gameState.deck.length}</div>
+              </div>
+          </div>
+      )}
+
+      {/* ART GENERATION STUDIO */}
+      {gameState.phase === 'ART_GENERATION' && (
+          <div className="absolute inset-0 z-50 bg-[#0c0c0e] flex flex-col items-center justify-center animate-fade-in">
+              <div className="w-[600px] bg-[#18181b] border-4 border-gray-500 p-6 flex flex-col gap-4 shadow-[8px_8px_0_#000]">
+                  <div className="flex justify-between items-center border-b-2 border-gray-700 pb-2">
+                      <h2 className="text-xl pixel-font text-green-400">PIXEL PORTRAIT STUDIO v1.0</h2>
+                      <button onClick={() => setGameState(p => ({...p, phase: 'LOBBY'}))} className="text-red-500 hover:underline">[X] CLOSE</button>
+                  </div>
+                  
+                  <div className="flex gap-4">
+                      <div className="w-48 h-48 bg-black border-2 border-gray-600 flex items-center justify-center relative">
+                          {loadingImg && (
+                              <div className="text-green-400 text-xs animate-pulse font-mono">GENERATING...</div>
+                          )}
+                          {genImg && !loadingImg && (
+                              <img src={genImg} className="w-full h-full object-contain rendering-pixelated" />
+                          )}
+                          {!genImg && !loadingImg && (
+                              <div className="text-gray-600 text-xs">NO SIGNAL</div>
+                          )}
+                      </div>
+                      <div className="flex-1 flex flex-col gap-4">
+                          <textarea 
+                            className="w-full h-24 bg-gray-900 border-2 border-green-800 p-2 text-green-400 font-mono text-sm focus:outline-none focus:border-green-500 resize-none"
+                            placeholder={t.PROMPT_PLACEHOLDER}
+                            value={prompt}
+                            onChange={e => setPrompt(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                              {(['1K', '2K', '4K'] as const).map(s => (
+                                  <button 
+                                    key={s} 
+                                    onClick={() => setImgRes(s)}
+                                    className={`px-2 py-1 border border-gray-500 text-xs ${imgRes === s ? 'bg-green-900 text-white' : 'bg-black text-gray-500'}`}
+                                  >
+                                      {s}
+                                  </button>
+                              ))}
+                          </div>
+                          <button 
+                            onClick={handleGeneratePixelAvatar} 
+                            disabled={loadingImg || !prompt}
+                            className="w-full py-2 bg-green-700 border-b-4 border-green-900 text-white font-bold hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                             {loadingImg ? 'PROCESSING...' : t.GENERATE}
+                          </button>
+                          {genImg && (
+                              <button 
+                                onClick={() => {
+                                    setGameState(p => ({
+                                        ...p, 
+                                        player: { ...p.player, avatarUrl: genImg },
+                                        phase: 'LOBBY'
+                                    }));
+                                }}
+                                className="w-full py-2 bg-blue-700 border-b-4 border-blue-900 text-white font-bold hover:bg-blue-600"
+                              >
+                                {t.SET_AVATAR}
+                              </button>
+                          )}
+                      </div>
+                  </div>
               </div>
           </div>
       )}
@@ -489,12 +564,12 @@ export default function App() {
 
       {['PLAYER_INPUT', 'ANIMATING', 'ENEMY_THINKING', 'ENEMY_ACTING', 'VICTORY', 'DEFEAT'].includes(gameState.phase) && (
         <>
-            <div className="relative z-10 p-4 flex justify-between items-start">
-                <div className="bg-black/80 p-2 rounded border-2 border-gray-700 shadow-lg">
+            <div className="relative z-10 p-4 w-full flex justify-center">
+                <div className="absolute left-4 top-4 bg-black/80 p-2 rounded border-2 border-gray-700 shadow-lg">
                     <h1 className="text-2xl text-yellow-500 pixel-font drop-shadow-md">DUEL ARENA</h1>
                     <div className="text-sm text-gray-400 font-mono">{t.ROUND} {gameState.turn}</div>
                 </div>
-                <div className="w-72 h-32 bg-black/80 rounded border-2 border-gray-700 p-2 overflow-y-auto font-[VT323] text-lg leading-tight shadow-xl scrollbar-thin">
+                <div className="w-96 h-32 bg-black/80 rounded border-2 border-gray-700 p-2 overflow-y-auto font-[VT323] text-lg leading-tight shadow-xl scrollbar-thin text-center">
                     {combatLog.map((log, i) => <div key={i} className="mb-1 text-green-300 border-b border-gray-800/50">{log}</div>)}
                 </div>
             </div>

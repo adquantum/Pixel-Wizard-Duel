@@ -63,8 +63,8 @@ export const TYPE_ICONS: Record<string, string> = {
     TRAP: '/assets/type/Type_Trap.png',
     SHIELD: '/assets/type/Type_Ward.png',
     AURA: '/assets/type/Type_Aura.png',
-    GLOBAL: '/assets/type/Type_Aura.png', // Bubbles are usually considered Auras in this context or specific global icons
-    WEAKNESS: '/assets/type/Type_Charm.png', // Weakness is a Charm
+    GLOBAL: '/assets/type/Type_Aura.png', // Fallback
+    WEAKNESS: '/assets/type/Type_Charm.png', 
     MANIPULATION: '/assets/type/Type_Charm.png',
 };
 
@@ -88,6 +88,7 @@ export const TRANSLATIONS = {
     WELCOME: "Welcome",
     ENTER_DUEL: "ENTER DUEL",
     EDIT_DECK: "EDIT DECK",
+    PIXEL_STUDIO: "PIXEL STUDIO",
     SAVE_EXIT: "SAVE & EXIT",
     AVAILABLE_SPELLS: "AVAILABLE SPELLS",
     CURRENT_DECK: "CURRENT DECK",
@@ -105,7 +106,10 @@ export const TRANSLATIONS = {
     NEXT: "Next",
     DRAIN: "Drain",
     PIPS: "p",
-    BACK: "BACK"
+    BACK: "BACK",
+    GENERATE: "GENERATE",
+    PROMPT_PLACEHOLDER: "E.g. A fire wizard with a staff...",
+    SET_AVATAR: "SET AVATAR"
   },
   CN: {
     PASS: "跳过",
@@ -115,6 +119,7 @@ export const TRANSLATIONS = {
     WELCOME: "欢迎",
     ENTER_DUEL: "开始决斗",
     EDIT_DECK: "编辑卡组",
+    PIXEL_STUDIO: "像素工坊",
     SAVE_EXIT: "保存并退出",
     AVAILABLE_SPELLS: "可用法术",
     CURRENT_DECK: "当前卡组",
@@ -132,7 +137,10 @@ export const TRANSLATIONS = {
     NEXT: "下一次",
     DRAIN: "吸血",
     PIPS: "费",
-    BACK: "返回"
+    BACK: "返回",
+    GENERATE: "生成",
+    PROMPT_PLACEHOLDER: "例如：手持法杖的火系法师...",
+    SET_AVATAR: "设为头像"
   }
 };
 
@@ -147,7 +155,6 @@ export const SCHOOL_DESCRIPTIONS: Record<School, string> = {
 };
 
 // --- AVATAR PATHS ---
-// FIX: Updated to absolute paths
 export const AVATAR_ASSETS: Record<string, string> = {
     PLAYER_DEFAULT: "/assets/avatars/player_default.png",
     ENEMY_BOSS: "/assets/avatars/enemy_boss.png",
@@ -245,7 +252,8 @@ SCHOOLS.forEach(sch => {
         BASE_CARDS.push(createCard(p('windstorm'), 'Windstorm', '风暴陷阱', sch, 'TRAP', 1, 1.0, '+20% Storm Dmg to All', '+20% 全体风暴伤害', { buffValue: 0.20, buffSchool: 'STORM', isAoe: true }));
     }
     
-    BASE_CARDS.push(createCard(p('global'), `${sch} Bubble`, `${SCHOOL_NAMES_CN[sch]}领域`, sch, 'GLOBAL', 2, 1.0, `+25% ${sch} Dmg Global`, `+25% 全局${SCHOOL_NAMES_CN[sch]}伤害`, { buffValue: 0.25 }));
+    // CHANGED GLOBAL TO AURA, Duration 4 rounds typically
+    BASE_CARDS.push(createCard(p('aura'), `${sch} Aura`, `${SCHOOL_NAMES_CN[sch]}光环`, sch, 'AURA', 2, 1.0, `+25% ${sch} Dmg (4 Rnds)`, `+25% ${SCHOOL_NAMES_CN[sch]}伤害 (4回合)`, { buffValue: 0.25, duration: 4 }));
 });
 
 BASE_CARDS.push(createCard('uni_tower', 'Tower Shield', '塔盾', 'ICE', 'SHIELD', 0, 1.0, '-50% Next Dmg (Any)', '-50% 下一次任意伤害', { shieldValue: 0.50, buffSchool: 'UNIVERSAL', icon: '/assets/icons/Icon_Ice.png' }));

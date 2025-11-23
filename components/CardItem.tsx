@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card, Language } from '../types';
-import { SCHOOL_COLORS, TYPE_ICONS, getFallbackSchoolIcon } from '../constants';
+import { SCHOOL_COLORS, TYPE_ICONS, SCHOOL_ICONS, getFallbackSchoolIcon } from '../constants';
 
 interface CardItemProps {
   card: Card;
@@ -12,90 +12,130 @@ interface CardItemProps {
 }
 
 export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, disabled, language }) => {
-  const color = SCHOOL_COLORS[card.school];
+  const schoolColor = SCHOOL_COLORS[card.school];
   const name = language === 'CN' ? card.nameCN : card.name;
   const desc = language === 'CN' ? card.descriptionCN : card.description;
   
   const [artError, setArtError] = useState(false);
   
-  // Use the Type Icon (Fist, Shield, etc.) as the fallback image center
   const typeIconSrc = TYPE_ICONS[card.type] || TYPE_ICONS.ATTACK;
-  const schoolIconFallback = getFallbackSchoolIcon(card.school);
+  const schoolIconSrc = SCHOOL_ICONS[card.school];
 
   return (
     <div 
       onClick={() => !disabled && canAfford && onClick()}
       className={`
-        group relative w-32 h-52 cursor-pointer transition-all duration-300 ease-out select-none flex-shrink-0
-        ${disabled ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:-translate-y-8 hover:scale-110 hover:z-50 hover:rotate-1'}
-        ${!canAfford && !disabled ? 'opacity-60 saturate-50' : ''}
+        group relative w-36 h-56 cursor-pointer transition-all duration-150 ease-in-out select-none flex-shrink-0
+        ${disabled ? 'opacity-60 cursor-not-allowed grayscale-[0.8]' : 'hover:-translate-y-2 hover:z-50'}
+        ${!canAfford && !disabled ? 'opacity-80' : ''}
       `}
-      style={{ imageRendering: 'pixelated', transformOrigin: 'center bottom' }}
+      style={{ 
+          fontFamily: '"VT323", monospace',
+          imageRendering: 'pixelated'
+      }}
     >
-      <div className="absolute inset-0 rounded-lg border-[4px] bg-[#18181b] flex flex-col shadow-xl overflow-hidden" style={{ borderColor: '#d4b483' }}>
-        
-        {/* Header */}
-        <div className="h-7 flex items-center justify-between px-2 text-[10px] font-bold text-white border-b-2 border-[#d4b483]" style={{ backgroundColor: color }}>
-          <span className={`truncate font-[VT323] text-lg tracking-tight ${language === 'CN' ? 'font-sans text-xs pt-1' : ''}`}>{name}</span>
+      {/* --- CARD FRAME (MULTI-LAYER PIXEL BORDER) --- */}
+      <div className="w-full h-full flex flex-col bg-[#18181b] relative overflow-hidden"
+           style={{
+             boxShadow: `
+               0 0 0 2px #000,
+               0 0 0 4px ${schoolColor}, 
+               0 0 0 6px #000
+             `
+           }}>
+           
+        {/* HEADER (Title) */}
+        <div className="h-8 mt-1 mx-1 flex items-center justify-center bg-[#27272a] border-b-2 border-black relative z-10">
+            {/* Subtle Background Tint */}
+            <div className="absolute inset-0 opacity-40" style={{ backgroundColor: schoolColor }}></div>
+            <span className={`text-white drop-shadow-[1px_1px_0_#000] z-10 truncate px-8 ${language === 'CN' ? 'text-sm font-bold' : 'text-lg'}`}>
+               {name.toUpperCase()}
+            </span>
         </div>
 
-        {/* Art Area */}
-        <div className="h-28 bg-[#09090b] relative flex items-center justify-center overflow-hidden group-hover:brightness-110">
-             {!artError ? (
+        {/* ART CONTAINER */}
+        <div className="flex-1 relative bg-gray-900 mx-1 border-x-2 border-black overflow-hidden">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10" 
+                 style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '4px 4px' }}>
+            </div>
+
+            {!artError ? (
                  <img 
                     src={card.assetUrl} 
                     alt="spell" 
-                    className="w-20 h-20 object-contain drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]"
+                    className="w-full h-full object-cover"
                     onError={() => setArtError(true)}
                  />
              ) : (
-                 // FALLBACK LAYOUT: Show Type Icon in center if main art is missing
-                 <div className="relative w-full h-full flex items-center justify-center">
-                    {/* Faint School Icon in background */}
-                    <div className="absolute inset-0 opacity-10 flex items-center justify-center scale-150">
-                        <img src={schoolIconFallback} className="w-24 h-24 grayscale" alt="bg" />
-                    </div>
-                    {/* Type Icon (e.g. Damage Fist) in center */}
+                 <div className="w-full h-full flex items-center justify-center relative">
+                    <div className="absolute inset-0 opacity-20" style={{ backgroundColor: schoolColor }}></div>
                     <img 
                         src={typeIconSrc} 
-                        className="w-16 h-16 object-contain drop-shadow-[0_4px_0_rgba(0,0,0,0.5)]" 
+                        className="w-16 h-16 object-contain drop-shadow-[4px_4px_0_#000]" 
                         alt="type fallback" 
                     />
                  </div>
              )}
-
-             {/* Watermark (Bottom Right) */}
-             <img 
-                src={schoolIconFallback} 
-                className="absolute -right-4 -bottom-4 w-24 h-24 opacity-10 pointer-events-none" 
-                alt="wm" 
-             />
         </div>
 
-        {/* Stats Bar */}
-        <div className="h-5 bg-black/50 flex justify-between items-center px-1 border-t-2 border-b-2 border-[#d4b483]">
-             <div className="text-yellow-400 font-bold text-xs font-[Press Start 2P] pl-1">
-                {card.pips}<span className="text-[8px]">p</span>
-             </div>
-             <div className="text-green-400 font-mono text-xs">
-                {Math.floor(card.accuracy * 100)}%
-             </div>
-             <div className="flex items-center justify-center w-4 h-4">
-                <img src={typeIconSrc} alt={card.type} className="w-4 h-4 object-contain" />
-             </div>
-        </div>
-
-        {/* Description */}
-        <div className="flex-1 bg-[#e7e5e4] p-1 text-center flex items-center justify-center relative">
-            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `repeating-linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000)`, backgroundSize: '4px 4px' }}></div>
-            <p className={`text-[10px] leading-3 font-serif font-bold text-gray-900 z-10 px-1 ${language === 'CN' ? 'font-sans text-[9px]' : ''}`}>
+        {/* DESCRIPTION BOX */}
+        <div className="h-16 mx-1 mb-1 bg-[#e7e5e4] border-t-2 border-black p-1 text-center flex items-center justify-center relative z-10">
+            <p className={`leading-3 text-black font-bold drop-shadow-sm ${language === 'CN' ? 'text-[10px]' : 'text-[12px]'}`}>
                 {desc}
             </p>
         </div>
+
+        {/* --- INTEGRATED CORNER STATS --- */}
+        
+        {/* TOP-LEFT: PIPS (Golden Corner Triangle) */}
+        <div className="absolute top-0 left-0 w-14 h-14 z-20 pointer-events-none">
+            {/* Triangle Shape via Gradient */}
+            <div className="absolute top-0 left-0 w-full h-full"
+                 style={{
+                   background: `linear-gradient(135deg, #fbbf24 45%, #b45309 50%, transparent 50%)`,
+                   filter: 'drop-shadow(2px 2px 0 #000)'
+                 }}>
+            </div>
+            {/* Pip Number */}
+            <span className="absolute top-1 left-1 w-6 h-6 flex items-center justify-center font-[Press Start 2P] text-white text-[12px] font-bold drop-shadow-[1px_1px_0_#000] z-30">
+                {card.pips}
+            </span>
+        </div>
+
+        {/* TOP-RIGHT: SCHOOL ICON (Embedded Box) */}
+        <div className="absolute top-0 right-0 w-9 h-9 z-20 pointer-events-none bg-[#18181b] border-l-2 border-b-2 border-[#a1a1aa] flex items-center justify-center shadow-[-2px_2px_0_#000]">
+             <img 
+               src={schoolIconSrc} 
+               alt={card.school} 
+               className="w-7 h-7 object-contain" 
+               onError={(e) => { e.currentTarget.src = getFallbackSchoolIcon(card.school); }}
+             />
+        </div>
+
+        {/* BOTTOM-LEFT: ACCURACY (Socketed Circle) */}
+        <div className="absolute bottom-[60px] left-2 w-8 h-8 z-20 translate-y-4">
+            <div className="w-full h-full rounded-full bg-[#064e3b] border-2 border-[#34d399] flex items-center justify-center shadow-[0_2px_0_#000] group-hover:scale-110 transition-transform">
+                <span className="text-white font-[VT323] text-sm font-bold drop-shadow-md">
+                    {Math.floor(card.accuracy * 100)}%
+                </span>
+            </div>
+        </div>
+
+        {/* BOTTOM-RIGHT: TYPE ICON (Socketed Square) */}
+        <div className="absolute bottom-[60px] right-2 w-8 h-8 z-20 translate-y-4">
+             <div className="w-full h-full bg-[#27272a] border-2 border-gray-400 flex items-center justify-center p-0.5 shadow-[0_2px_0_#000] group-hover:scale-110 transition-transform">
+                 <img src={typeIconSrc} alt={card.type} className="w-full h-full object-contain" />
+             </div>
+        </div>
+
       </div>
       
+      {/* HOVER GLOW (Outer Ring) */}
       {!disabled && canAfford && (
-        <div className="absolute -inset-2 rounded-xl bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300 -z-10 blur-md"></div>
+        <div className="absolute -inset-2 border-2 border-white opacity-0 group-hover:opacity-100 pointer-events-none z-50 rounded-sm" 
+             style={{ animation: 'pulse 1s infinite' }}>
+        </div>
       )}
     </div>
   );
