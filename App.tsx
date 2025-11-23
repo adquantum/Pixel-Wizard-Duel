@@ -11,7 +11,8 @@ import {
     SCHOOL_ICONS,
     GET_STARTER_DECK,
     STORAGE_PREFIX,
-    TRANSLATIONS
+    TRANSLATIONS,
+    getFallbackSchoolIcon
 } from './constants';
 import { calculatePipCost, calculateDamage, getUsedBuffIds } from './utils/gameLogic';
 import { UnitDisplay } from './components/UnitDisplay';
@@ -60,6 +61,7 @@ export default function App() {
   const [floatingText, setFloatingText] = useState<{target: string, text: string, color: string} | null>(null);
   const [animatingUnitId, setAnimatingUnitId] = useState<string | null>(null);
   const [flyingCard, setFlyingCard] = useState<{ card: Card, from: 'player' | 'enemy' } | null>(null);
+  const [flyingCardError, setFlyingCardError] = useState(false); // NEW: Error state for flying card
   const [availableCollection, setAvailableCollection] = useState<Card[]>([]);
   const [editDeck, setEditDeck] = useState<Card[]>([]);
 
@@ -183,6 +185,7 @@ export default function App() {
     }
 
     setFlyingCard({ card, from: casterIsPlayer ? 'player' : 'enemy' });
+    setFlyingCardError(false); // Reset error on new card
     await new Promise(r => setTimeout(r, 600)); 
     setFlyingCard(null);
 
@@ -510,7 +513,12 @@ export default function App() {
 
             {flyingCard && (
                 <div className={`absolute top-1/2 -translate-y-1/2 z-50 transition-all duration-500 ease-in-out w-32 h-48 bg-gray-900 border-2 border-yellow-500 rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(255,215,0,0.5)] ${flyingCard.from === 'player' ? 'left-32 opacity-0 animate-fly-right' : 'right-32 opacity-0 animate-fly-left'}`}>
-                    {flyingCard.card.assetUrl ? <img src={flyingCard.card.assetUrl} className="w-24 h-24" /> : <img src={flyingCard.card.icon} className="w-12 h-12" />}
+                    <img 
+                        src={!flyingCardError && flyingCard.card.assetUrl ? flyingCard.card.assetUrl : getFallbackSchoolIcon(flyingCard.card.school)} 
+                        className={!flyingCardError && flyingCard.card.assetUrl ? "w-24 h-24" : "w-12 h-12"} 
+                        onError={() => setFlyingCardError(true)}
+                        alt="flying card"
+                    />
                 </div>
             )}
 

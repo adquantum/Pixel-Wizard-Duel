@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Unit, School, Language } from '../types';
+import { Unit, School, Language, Buff } from '../types';
 import { SCHOOL_ICONS, SCHOOL_COLORS, getFallbackSchoolIcon } from '../constants';
 
 interface UnitDisplayProps {
@@ -58,38 +58,50 @@ export const UnitDisplay: React.FC<UnitDisplayProps> = ({ unit, isPlayer, animat
     return pips;
   };
 
+  const renderBuffSquare = (buff: Buff, idx: number) => {
+      const color = buff.school === 'UNIVERSAL' ? '#fbbf24' : SCHOOL_COLORS[buff.school as School];
+      const isDebuff = buff.value < 0 || buff.type === 'TRAP' || buff.type === 'WEAKNESS';
+      const schoolKey = buff.school === 'UNIVERSAL' ? 'BALANCE' : buff.school;
+      const iconSrc = iconError[`buff-${buff.id}`] ? getFallbackSchoolIcon(schoolKey as School) : SCHOOL_ICONS[schoolKey as School];
+
+      return (
+        <div 
+          key={`${buff.id}-${idx}`} 
+          className="relative w-10 h-10 bg-gray-900 border-2 border-white shadow-lg flex flex-col items-center justify-center group mx-1"
+          style={{ borderColor: color, imageRendering: 'pixelated', boxShadow: `0 0 0 1px #000, 0 0 5px ${color}` }}
+        >
+          <img 
+              src={iconSrc} 
+              className="w-5 h-5 opacity-80" 
+              alt="buff" 
+              onError={() => handleIconError(`buff-${buff.id}`)}
+          />
+          <div className={`font-bold text-[8px] font-mono bg-black/80 px-1 rounded-sm mt-0.5 ${isDebuff ? 'text-red-400' : 'text-green-400'}`}>
+            {buff.value > 0 ? '+' : ''}{Math.round(buff.value * 100)}%
+          </div>
+          <div className="absolute bottom-full mb-2 hidden group-hover:block w-32 bg-black text-white text-xs p-2 rounded z-50 border border-gray-700 pointer-events-none">
+              {language === 'CN' && buff.nameCN ? buff.nameCN : buff.name}
+          </div>
+        </div>
+       );
+  };
+
+  // Split Buffs: Charms (Blade/Weakness) vs Wards (Shield/Trap)
+  // REGEN and DOT placed with Charms and Wards respectively or just loosely
+  const charms = unit.buffs.filter(b => ['BLADE', 'WEAKNESS', 'REGEN'].includes(b.type));
+  const wards = unit.buffs.filter(b => ['SHIELD', 'TRAP', 'DOT'].includes(b.type));
+
   return (
     <div className={`relative flex flex-col items-center w-80 transition-transform duration-300 ${shake ? 'translate-x-2' : ''}`}>
       
-      {/* --- BUFF GRID --- */}
-      <div className="absolute -top-28 w-64 flex flex-wrap justify-center gap-2 z-20">
-        {unit.buffs.slice(0, 6).map((buff, idx) => {
-             const color = buff.school === 'UNIVERSAL' ? '#fbbf24' : SCHOOL_COLORS[buff.school as School];
-             const isDebuff = buff.value < 0 || buff.type === 'TRAP';
-             const schoolKey = buff.school === 'UNIVERSAL' ? 'BALANCE' : buff.school;
-             const iconSrc = iconError[`buff-${buff.id}`] ? getFallbackSchoolIcon(schoolKey as School) : SCHOOL_ICONS[schoolKey as School];
-             
-             return (
-              <div 
-                key={`${buff.id}-${idx}`} 
-                className="relative w-12 h-12 bg-gray-900 border-2 border-white shadow-lg flex flex-col items-center justify-center group"
-                style={{ borderColor: color, imageRendering: 'pixelated', boxShadow: `0 0 0 2px #000, 0 0 10px ${color}` }}
-              >
-                <img 
-                    src={iconSrc} 
-                    className="w-6 h-6 opacity-80" 
-                    alt="buff" 
-                    onError={() => handleIconError(`buff-${buff.id}`)}
-                />
-                <div className={`font-bold text-[10px] font-mono bg-black/80 px-1 rounded-sm mt-1 ${isDebuff ? 'text-red-400' : 'text-green-400'}`}>
-                  {buff.value > 0 ? '+' : ''}{Math.round(buff.value * 100)}%
-                </div>
-                <div className="absolute bottom-full mb-2 hidden group-hover:block w-32 bg-black text-white text-xs p-2 rounded z-50 border border-gray-700">
-                    {language === 'CN' && buff.nameCN ? buff.nameCN : buff.name}
-                </div>
-              </div>
-             );
-        })}
+      {/* --- BUFF ROWS --- */}
+      {/* Row 1: Charms (Blades, Weaknesses) - Higher up */}
+      <div className="absolute -top-36 w-80 flex flex-wrap justify-center z-10 min-h-[40px]">
+        {charms.map(renderBuffSquare)}
+      </div>
+      {/* Row 2: Wards (Shields, Traps) - Closer to unit */}
+      <div className="absolute -top-20 w-80 flex flex-wrap justify-center z-20 min-h-[40px]">
+        {wards.map(renderBuffSquare)}
       </div>
 
       {/* Floating Combat Text */}

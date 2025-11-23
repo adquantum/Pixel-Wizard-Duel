@@ -74,6 +74,19 @@ export const SCHOOL_ICONS: Record<School, string> = {
     BALANCE: '/assets/icons/Icon_Balance.png',
 };
 
+// --- CARD TYPE ICONS ---
+export const TYPE_ICONS: Record<string, string> = {
+    ATTACK: '/assets/type/Type_Damage.png',
+    HEAL: '/assets/type/Type_Heal.png',
+    BLADE: '/assets/type/Type_Charm.png',
+    TRAP: '/assets/type/Type_Trap.png',
+    SHIELD: '/assets/type/Type_Ward.png',
+    AURA: '/assets/type/Type_Aura.png',
+    GLOBAL: '/assets/type/Type_Aura.png', // Bubbles are usually considered Auras in this context or specific global icons
+    WEAKNESS: '/assets/type/Type_Charm.png', // Weakness is a Charm
+    MANIPULATION: '/assets/type/Type_Charm.png',
+};
+
 
 export const SCHOOL_NAMES_CN: Record<School, string> = {
   FIRE: '火系',

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card, Language } from '../types';
-import { SCHOOL_COLORS, SCHOOL_ICONS, generateFallbackAsset, getFallbackSchoolIcon } from '../constants';
+import { SCHOOL_COLORS, SCHOOL_ICONS, TYPE_ICONS, generateFallbackAsset, getFallbackSchoolIcon } from '../constants';
 
 interface CardItemProps {
   card: Card;
@@ -21,6 +21,7 @@ export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, di
 
   const iconSrc = iconError ? getFallbackSchoolIcon(card.school) : card.icon;
   const artSrc = artError ? generateFallbackAsset(card.school, card.type) : card.assetUrl;
+  const typeIconSrc = TYPE_ICONS[card.type] || TYPE_ICONS.ATTACK;
 
   return (
     <div 
@@ -63,8 +64,8 @@ export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, di
              <div className="text-green-400 font-mono text-xs">
                 {Math.floor(card.accuracy * 100)}%
              </div>
-             <div className="text-[8px] uppercase font-bold text-gray-400">
-                {card.type}
+             <div className="flex items-center justify-center w-4 h-4">
+                <img src={typeIconSrc} alt={card.type} className="w-4 h-4 object-contain" />
              </div>
         </div>
 
