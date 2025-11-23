@@ -105,11 +105,6 @@ export const TRANSLATIONS = {
     NEXT: "Next",
     DRAIN: "Drain",
     PIPS: "p",
-    ART_STUDIO: "ART STUDIO",
-    GENERATE: "GENERATE",
-    PROMPT_PLACEHOLDER: "Describe a wizard, monster, or spell...",
-    IMAGE_SIZE: "Image Size",
-    SET_AVATAR: "SET AS AVATAR",
     BACK: "BACK"
   },
   CN: {
@@ -137,11 +132,6 @@ export const TRANSLATIONS = {
     NEXT: "下一次",
     DRAIN: "吸血",
     PIPS: "费",
-    ART_STUDIO: "艺术工坊",
-    GENERATE: "生成",
-    PROMPT_PLACEHOLDER: "描述你的巫师、怪物或法术...",
-    IMAGE_SIZE: "图片尺寸",
-    SET_AVATAR: "设为头像",
     BACK: "返回"
   }
 };

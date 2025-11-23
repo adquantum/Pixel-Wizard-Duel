@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Unit, Card, GameState, Buff, School, Language } from './types';
 import { 
     CARD_DATABASE, 
@@ -65,12 +64,6 @@ export default function App() {
   const [flyingCardError, setFlyingCardError] = useState(false); // NEW: Error state for flying card
   const [availableCollection, setAvailableCollection] = useState<Card[]>([]);
   const [editDeck, setEditDeck] = useState<Card[]>([]);
-
-  // Art Studio State
-  const [genPrompt, setGenPrompt] = useState('');
-  const [genSize, setGenSize] = useState<'1K' | '2K' | '4K'>('1K');
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const t = TRANSLATIONS[language];
 
@@ -140,51 +133,6 @@ export default function App() {
           next.splice(index, 1);
           return next;
       });
-  };
-
-  // Image Generation Logic
-  const handleGenerateImage = async () => {
-      if (!genPrompt || isGenerating) return;
-      setIsGenerating(true);
-      setGeneratedImage(null);
-      
-      try {
-          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-          const response = await ai.models.generateContent({
-              model: 'gemini-3-pro-image-preview',
-              contents: { parts: [{ text: genPrompt }] },
-              config: {
-                  imageConfig: {
-                      imageSize: genSize,
-                      aspectRatio: "1:1"
-                  }
-              }
-          });
-          
-          if (response.candidates?.[0]?.content?.parts) {
-              for (const part of response.candidates[0].content.parts) {
-                  if (part.inlineData) {
-                      setGeneratedImage(`data:image/png;base64,${part.inlineData.data}`);
-                      break;
-                  }
-              }
-          }
-      } catch (error) {
-          console.error("Generation failed", error);
-          alert("Failed to generate image. Please try again.");
-      } finally {
-          setIsGenerating(false);
-      }
-  };
-
-  const setGeneratedAvatar = () => {
-      if (generatedImage) {
-          setGameState(prev => ({
-              ...prev,
-              player: { ...prev.player, avatarUrl: generatedImage },
-              phase: 'LOBBY'
-          }));
-      }
   };
 
   const startBattle = () => {
@@ -493,87 +441,7 @@ export default function App() {
                       <button onClick={startBattle} className="w-64 h-24 bg-red-800 border-4 border-red-600 hover:bg-red-700 text-2xl pixel-font shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none">{t.ENTER_DUEL}</button>
                       <button onClick={enterDeckBuilder} className="w-64 h-24 bg-indigo-800 border-4 border-indigo-600 hover:bg-indigo-700 text-2xl pixel-font shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none">{t.EDIT_DECK}</button>
                   </div>
-                  <div className="mt-4">
-                      <button onClick={() => setGameState(prev => ({ ...prev, phase: 'ART_GENERATION' }))} className="w-64 h-16 bg-gray-800 border-4 border-gray-600 hover:bg-gray-700 text-xl pixel-font shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none text-yellow-400">{t.ART_STUDIO}</button>
-                  </div>
                   <div className="text-gray-500 mt-4 font-mono text-sm">{t.DECK_SIZE}: {gameState.deck.length}</div>
-              </div>
-          </div>
-      )}
-
-      {gameState.phase === 'ART_GENERATION' && (
-          <div className="absolute inset-0 z-50 bg-[#0c0c0e] flex flex-col items-center justify-center animate-fade-in p-8">
-              <div className="w-full max-w-4xl bg-[#18181b] border-4 border-gray-700 p-8 shadow-2xl flex gap-8">
-                  {/* Left Controls */}
-                  <div className="flex-1 flex flex-col gap-6">
-                      <h2 className="text-3xl pixel-font text-yellow-500 mb-2">{t.ART_STUDIO}</h2>
-                      
-                      <div className="flex flex-col gap-2">
-                          <label className="text-gray-400 font-mono text-sm">PROMPT</label>
-                          <textarea 
-                              value={genPrompt}
-                              onChange={(e) => setGenPrompt(e.target.value)}
-                              placeholder={t.PROMPT_PLACEHOLDER}
-                              className="w-full h-32 bg-gray-900 border-2 border-gray-600 p-4 text-white font-[VT323] text-xl focus:border-yellow-500 focus:outline-none resize-none"
-                          />
-                      </div>
-
-                      <div className="flex flex-col gap-2">
-                          <label className="text-gray-400 font-mono text-sm">{t.IMAGE_SIZE}</label>
-                          <div className="flex gap-4">
-                              {['1K', '2K', '4K'].map((size) => (
-                                  <button 
-                                      key={size}
-                                      onClick={() => setGenSize(size as any)}
-                                      className={`flex-1 py-2 border-2 pixel-font text-sm ${genSize === size ? 'bg-yellow-600 border-yellow-400 text-white' : 'bg-gray-800 border-gray-600 text-gray-400 hover:bg-gray-700'}`}
-                                  >
-                                      {size}
-                                  </button>
-                              ))}
-                          </div>
-                      </div>
-
-                      <button 
-                          onClick={handleGenerateImage}
-                          disabled={isGenerating || !genPrompt}
-                          className={`w-full py-4 mt-4 font-bold pixel-font text-xl border-4 shadow-[4px_4px_0_#000] active:translate-y-1 active:shadow-none transition-all ${isGenerating || !genPrompt ? 'bg-gray-700 border-gray-500 text-gray-500 cursor-not-allowed' : 'bg-green-700 border-green-500 text-white hover:bg-green-600'}`}
-                      >
-                          {isGenerating ? t.THINKING : t.GENERATE}
-                      </button>
-                      
-                      <button 
-                          onClick={() => setGameState(prev => ({ ...prev, phase: 'LOBBY' }))}
-                          className="w-full py-2 bg-transparent border-2 border-gray-600 text-gray-400 hover:text-white hover:border-white pixel-font text-sm"
-                      >
-                          {t.BACK}
-                      </button>
-                  </div>
-
-                  {/* Right Preview */}
-                  <div className="w-[400px] flex flex-col items-center justify-center bg-black border-4 border-gray-800 relative min-h-[400px]">
-                      {isGenerating ? (
-                          <div className="flex flex-col items-center gap-4 animate-pulse">
-                              <div className="w-16 h-16 border-4 border-t-yellow-500 border-r-yellow-500 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-                              <span className="text-yellow-500 pixel-font">{t.THINKING}</span>
-                          </div>
-                      ) : generatedImage ? (
-                          <div className="relative w-full h-full group">
-                              <img src={generatedImage} className="w-full h-full object-contain" alt="Generated" />
-                              <div className="absolute bottom-0 w-full p-4 bg-black/80 translate-y-full group-hover:translate-y-0 transition-transform">
-                                  <button 
-                                      onClick={setGeneratedAvatar}
-                                      className="w-full py-2 bg-indigo-700 border-2 border-indigo-500 text-white pixel-font text-sm hover:bg-indigo-600"
-                                  >
-                                      {t.SET_AVATAR}
-                                  </button>
-                              </div>
-                          </div>
-                      ) : (
-                          <div className="text-gray-700 pixel-font text-xl text-center px-8">
-                              TYPE A PROMPT TO GENERATE PIXEL ART
-                          </div>
-                      )}
-                  </div>
               </div>
           </div>
       )}
