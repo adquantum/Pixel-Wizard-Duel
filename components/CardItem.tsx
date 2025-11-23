@@ -1,20 +1,23 @@
 
+
 import React, { useState } from 'react';
 import { Card, Language } from '../types';
-import { SCHOOL_COLORS, TYPE_ICONS, SCHOOL_ICONS, getFallbackSchoolIcon } from '../constants';
+import { SCHOOL_COLORS, TYPE_ICONS, SCHOOL_ICONS, getFallbackSchoolIcon, TRANSLATIONS } from '../constants';
 
 interface CardItemProps {
   card: Card;
   canAfford: boolean;
   onClick: () => void;
+  onDiscard?: () => void;
   disabled: boolean;
   language: Language;
 }
 
-export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, disabled, language }) => {
+export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, onDiscard, disabled, language }) => {
   const schoolColor = SCHOOL_COLORS[card.school];
   const name = language === 'CN' ? card.nameCN : card.name;
   const desc = language === 'CN' ? card.descriptionCN : card.description;
+  const t = TRANSLATIONS[language];
   
   const [artError, setArtError] = useState(false);
   
@@ -24,42 +27,59 @@ export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, di
   return (
     <div 
       onClick={() => !disabled && canAfford && onClick()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        if (!disabled && onDiscard) onDiscard();
+      }}
+      title={!disabled ? t.DISCARD_HINT : ""}
       className={`
-        group relative w-36 h-56 cursor-pointer transition-all duration-150 ease-in-out select-none flex-shrink-0
+        group relative w-44 h-64 cursor-pointer transition-all duration-150 ease-in-out select-none flex-shrink-0
         ${disabled ? 'opacity-60 cursor-not-allowed grayscale-[0.8]' : 'hover:-translate-y-2 hover:z-50'}
         ${!canAfford && !disabled ? 'opacity-80' : ''}
       `}
-      style={{ 
-          fontFamily: '"VT323", monospace',
-          imageRendering: 'pixelated'
-      }}
+      style={{ imageRendering: 'pixelated' }}
     >
-      {/* --- CARD FRAME (MULTI-LAYER PIXEL BORDER) --- */}
-      <div className="w-full h-full flex flex-col bg-[#18181b] relative overflow-hidden"
-           style={{
-             boxShadow: `
-               0 0 0 2px #000,
-               0 0 0 4px ${schoolColor}, 
-               0 0 0 6px #000
-             `
-           }}>
-           
-        {/* HEADER (Title) */}
-        <div className="h-8 mt-1 mx-1 flex items-center justify-center bg-[#27272a] border-b-2 border-black relative z-10">
-            {/* Subtle Background Tint */}
-            <div className="absolute inset-0 opacity-40" style={{ backgroundColor: schoolColor }}></div>
-            <span className={`text-white drop-shadow-[1px_1px_0_#000] z-10 truncate px-8 ${language === 'CN' ? 'text-sm font-bold' : 'text-lg'}`}>
-               {name.toUpperCase()}
-            </span>
+      {/* --- OUTER FRAME --- */}
+      <div 
+        className="w-full h-full flex flex-col bg-[#111] p-1.5 relative overflow-hidden"
+        style={{
+            boxShadow: `0 0 0 2px #000, 0 0 0 4px ${schoolColor}, 0 0 0 6px #000`,
+            borderRadius: '4px'
+        }}
+      >
+
+        {/* --- 1. HEADER BAR --- */}
+        <div className="relative h-8 flex items-center bg-[#222] border-2 border-black mb-1">
+             {/* Background Tint */}
+             <div className="absolute inset-0 opacity-40 z-0" style={{ backgroundColor: schoolColor }}></div>
+             
+             {/* Pip Cost (Absolute Left) */}
+             <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-10 h-10 z-20">
+                <div className="w-full h-full rounded-full bg-yellow-400 border-[3px] border-black flex items-center justify-center shadow-[1px_1px_0_#000]">
+                    <span className="font-['Press_Start_2P'] text-black text-sm pt-1">{card.pips}</span>
+                </div>
+             </div>
+
+             {/* Name (Centered/Right) */}
+             <div className="w-full pl-8 pr-8 text-center z-10">
+                 <span className={`text-white drop-shadow-[1px_1px_0_#000] tracking-wide ${language === 'CN' ? 'font-bold font-[VT323] text-lg' : 'font-[VT323] text-xl uppercase'}`}>
+                    {name}
+                 </span>
+             </div>
+             
+             {/* School Icon (Absolute Right) */}
+             <div className="absolute right-1 top-1/2 -translate-y-1/2 z-20 w-6 h-6">
+                 <img 
+                   src={schoolIconSrc} 
+                   alt={card.school} 
+                   className="w-full h-full object-contain drop-shadow-md"
+                   onError={(e) => { e.currentTarget.src = getFallbackSchoolIcon(card.school); }}
+                 />
+             </div>
         </div>
 
-        {/* ART CONTAINER */}
-        <div className="flex-1 relative bg-gray-900 mx-1 border-x-2 border-black overflow-hidden">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10" 
-                 style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '4px 4px' }}>
-            </div>
-
+        {/* --- 2. ART AREA --- */}
+        <div className="flex-1 relative bg-black border-2 border-gray-700 overflow-hidden mb-1">
             {!artError ? (
                  <img 
                     src={card.assetUrl} 
@@ -68,74 +88,45 @@ export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, di
                     onError={() => setArtError(true)}
                  />
              ) : (
-                 <div className="w-full h-full flex items-center justify-center relative">
-                    <div className="absolute inset-0 opacity-20" style={{ backgroundColor: schoolColor }}></div>
+                 <div className="w-full h-full flex items-center justify-center bg-gray-800">
                     <img 
                         src={typeIconSrc} 
-                        className="w-16 h-16 object-contain drop-shadow-[4px_4px_0_#000]" 
-                        alt="type fallback" 
+                        className="w-16 h-16 object-contain opacity-40" 
+                        alt="fallback" 
                     />
                  </div>
              )}
         </div>
 
-        {/* DESCRIPTION BOX */}
-        <div className="h-16 mx-1 mb-1 bg-[#e7e5e4] border-t-2 border-black p-1 text-center flex items-center justify-center relative z-10">
-            <p className={`leading-3 text-black font-bold drop-shadow-sm ${language === 'CN' ? 'text-[10px]' : 'text-[12px]'}`}>
+        {/* --- 3. INFO STRIP (Acc | Type) --- */}
+        <div className="h-6 flex justify-between items-center bg-[#1a1a1a] border-x-2 border-black px-2 mb-1">
+            {/* Accuracy */}
+            <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-gray-300 font-['VT323'] text-lg">{Math.floor(card.accuracy * 100)}%</span>
+            </div>
+            
+            {/* Type Icon */}
+            <div className="w-5 h-5">
+                <img src={typeIconSrc} alt={card.type} className="w-full h-full object-contain" />
+            </div>
+        </div>
+
+        {/* --- 4. DESCRIPTION BOX --- */}
+        <div className="h-16 bg-[#e5e5e5] border-2 border-black p-1 flex items-center justify-center text-center relative">
+            <div className="absolute inset-0 opacity-5 pointer-events-none" 
+                 style={{ backgroundImage: `repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)`, backgroundSize: '4px 4px' }}>
+            </div>
+            <p className={`text-black leading-none drop-shadow-none z-10 ${language === 'CN' ? 'text-xs font-bold' : 'text-sm font-[VT323]'}`}>
                 {desc}
             </p>
         </div>
 
-        {/* --- INTEGRATED CORNER STATS --- */}
-        
-        {/* TOP-LEFT: PIPS (Golden Corner Triangle) */}
-        <div className="absolute top-0 left-0 w-14 h-14 z-20 pointer-events-none">
-            {/* Triangle Shape via Gradient */}
-            <div className="absolute top-0 left-0 w-full h-full"
-                 style={{
-                   background: `linear-gradient(135deg, #fbbf24 45%, #b45309 50%, transparent 50%)`,
-                   filter: 'drop-shadow(2px 2px 0 #000)'
-                 }}>
-            </div>
-            {/* Pip Number */}
-            <span className="absolute top-1 left-1 w-6 h-6 flex items-center justify-center font-[Press Start 2P] text-white text-[12px] font-bold drop-shadow-[1px_1px_0_#000] z-30">
-                {card.pips}
-            </span>
-        </div>
-
-        {/* TOP-RIGHT: SCHOOL ICON (Embedded Box) */}
-        <div className="absolute top-0 right-0 w-9 h-9 z-20 pointer-events-none bg-[#18181b] border-l-2 border-b-2 border-[#a1a1aa] flex items-center justify-center shadow-[-2px_2px_0_#000]">
-             <img 
-               src={schoolIconSrc} 
-               alt={card.school} 
-               className="w-7 h-7 object-contain" 
-               onError={(e) => { e.currentTarget.src = getFallbackSchoolIcon(card.school); }}
-             />
-        </div>
-
-        {/* BOTTOM-LEFT: ACCURACY (Socketed Circle) */}
-        <div className="absolute bottom-[60px] left-2 w-8 h-8 z-20 translate-y-4">
-            <div className="w-full h-full rounded-full bg-[#064e3b] border-2 border-[#34d399] flex items-center justify-center shadow-[0_2px_0_#000] group-hover:scale-110 transition-transform">
-                <span className="text-white font-[VT323] text-sm font-bold drop-shadow-md">
-                    {Math.floor(card.accuracy * 100)}%
-                </span>
-            </div>
-        </div>
-
-        {/* BOTTOM-RIGHT: TYPE ICON (Socketed Square) */}
-        <div className="absolute bottom-[60px] right-2 w-8 h-8 z-20 translate-y-4">
-             <div className="w-full h-full bg-[#27272a] border-2 border-gray-400 flex items-center justify-center p-0.5 shadow-[0_2px_0_#000] group-hover:scale-110 transition-transform">
-                 <img src={typeIconSrc} alt={card.type} className="w-full h-full object-contain" />
-             </div>
-        </div>
-
       </div>
       
-      {/* HOVER GLOW (Outer Ring) */}
+      {/* HOVER GLOW */}
       {!disabled && canAfford && (
-        <div className="absolute -inset-2 border-2 border-white opacity-0 group-hover:opacity-100 pointer-events-none z-50 rounded-sm" 
-             style={{ animation: 'pulse 1s infinite' }}>
-        </div>
+        <div className="absolute -inset-2 border-[4px] border-white/80 opacity-0 group-hover:opacity-100 pointer-events-none z-50 rounded-lg animate-pulse"></div>
       )}
     </div>
   );

@@ -16,7 +16,6 @@ export const UnitDisplay: React.FC<UnitDisplayProps> = ({ unit, isPlayer, animat
   const [imgError, setImgError] = useState(false);
   const [iconError, setIconError] = useState<Record<string, boolean>>({});
 
-  // DiceBear fallback for Avatars if local file is missing
   const getFallbackAvatar = () => {
       const seed = isPlayer ? `Wiz${unit.school}` : unit.name.replace(' ', '');
       return `https://api.dicebear.com/9.x/pixel-art/svg?seed=${seed}`;
@@ -38,21 +37,21 @@ export const UnitDisplay: React.FC<UnitDisplayProps> = ({ unit, isPlayer, animat
     const totalPips = unit.powerPips + unit.pips;
     for (let i = 0; i < unit.powerPips; i++) {
       pips.push(
-        <div key={`pp-${i}`} className="relative w-5 h-5 mx-0.5">
-           <div className="absolute inset-0 rounded-full bg-yellow-400 border-2 border-yellow-700 shadow-[0_0_5px_rgba(250,204,21,0.8)] animate-pulse"></div>
+        <div key={`pp-${i}`} className="relative w-6 h-6 mx-0.5">
+           <div className="absolute inset-0 rounded-full bg-yellow-400 border-[3px] border-yellow-700 shadow-[inset_2px_2px_0_rgba(255,255,255,0.5)] animate-pulse"></div>
         </div>
       );
     }
     for (let i = 0; i < unit.pips; i++) {
       pips.push(
-        <div key={`p-${i}`} className="relative w-5 h-5 mx-0.5">
-           <div className="absolute inset-0 rounded-full bg-white border-2 border-gray-500"></div>
+        <div key={`p-${i}`} className="relative w-6 h-6 mx-0.5">
+           <div className="absolute inset-0 rounded-full bg-white border-[3px] border-gray-500 shadow-[inset_2px_2px_0_rgba(255,255,255,0.8)]"></div>
         </div>
       );
     }
     for (let i = totalPips; i < 7; i++) {
       pips.push(
-        <div key={`e-${i}`} className="w-5 h-5 mx-0.5 rounded-full bg-black/40 border-2 border-gray-800"></div>
+        <div key={`e-${i}`} className="w-6 h-6 mx-0.5 rounded-full bg-black/40 border-[3px] border-gray-800"></div>
       );
     }
     return pips;
@@ -67,85 +66,98 @@ export const UnitDisplay: React.FC<UnitDisplayProps> = ({ unit, isPlayer, animat
       return (
         <div 
           key={`${buff.id}-${idx}`} 
-          className="relative w-10 h-10 bg-gray-900 border-2 border-white shadow-lg flex flex-col items-center justify-center group mx-1"
-          style={{ borderColor: color, imageRendering: 'pixelated', boxShadow: `0 0 0 1px #000, 0 0 5px ${color}` }}
+          className="relative w-10 h-10 bg-gray-900 flex flex-col items-center justify-center group mb-2"
+          style={{ 
+              imageRendering: 'pixelated', 
+              boxShadow: `0 0 0 2px #000, 0 0 0 4px ${color}`
+          }}
         >
+          {/* Buff Icon */}
           <img 
               src={iconSrc} 
-              className="w-5 h-5 opacity-80" 
+              className="w-6 h-6 object-contain drop-shadow-[1px_1px_0_#000]" 
               alt="buff" 
               onError={() => handleIconError(`buff-${buff.id}`)}
           />
-          <div className={`font-bold text-[8px] font-mono bg-black/80 px-1 rounded-sm mt-0.5 ${isDebuff ? 'text-red-400' : 'text-green-400'}`}>
+          
+          {/* Value Text (Overlay) */}
+          <div className={`absolute -bottom-2 -right-2 font-['VT323'] text-lg font-bold leading-none drop-shadow-[2px_2px_0_#000] z-10 ${isDebuff ? 'text-red-400' : 'text-green-400'}`}
+               style={{ textShadow: '2px 2px 0 #000' }}>
             {buff.value > 0 ? '+' : ''}{Math.round(buff.value * 100)}%
           </div>
-          <div className="absolute bottom-full mb-2 hidden group-hover:block w-32 bg-black text-white text-xs p-2 rounded z-50 border border-gray-700 pointer-events-none">
+          
+          {/* Tooltip */}
+          <div className={`absolute top-0 w-32 bg-black text-white text-xs p-2 z-50 border-2 border-white font-['Press_Start_2P'] pointer-events-none text-center leading-relaxed hidden group-hover:block ${isPlayer ? 'left-full ml-2' : 'right-full mr-2'}`}>
               {language === 'CN' && buff.nameCN ? buff.nameCN : buff.name}
           </div>
         </div>
        );
   };
 
-  // Split Buffs: Charms (Blade/Weakness) vs Wards (Shield/Trap)
-  // REGEN and DOT placed with Charms and Wards respectively or just loosely
   const charms = unit.buffs.filter(b => ['BLADE', 'WEAKNESS', 'REGEN'].includes(b.type));
-  const wards = unit.buffs.filter(b => ['SHIELD', 'TRAP', 'DOT'].includes(b.type));
+  const wards = unit.buffs.filter(b => ['SHIELD', 'TRAP', 'DOT', 'AURA'].includes(b.type));
 
   return (
     <div className={`relative flex flex-col items-center w-80 transition-transform duration-300 ${shake ? 'translate-x-2' : ''}`}>
       
-      {/* --- BUFF ROWS --- */}
-      {/* Row 1: Charms (Blades, Weaknesses) - Higher up */}
-      <div className="absolute -top-36 w-80 flex flex-wrap justify-center z-10 min-h-[40px]">
-        {charms.map(renderBuffSquare)}
-      </div>
-      {/* Row 2: Wards (Shields, Traps) - Closer to unit */}
-      <div className="absolute -top-20 w-80 flex flex-wrap justify-center z-20 min-h-[40px]">
-        {wards.map(renderBuffSquare)}
+      {/* --- BUFF COLUMNS (SIDEBAR) --- */}
+      <div className={`absolute top-0 bottom-20 flex gap-2 ${isPlayer ? 'left-[105%]' : 'right-[105%] flex-row-reverse'}`}>
+          {/* Column 1: Charms/Blades (Inner) */}
+          <div className="flex flex-col justify-end pb-2 w-12 items-center">
+              {charms.map(renderBuffSquare)}
+          </div>
+          {/* Column 2: Wards/Traps (Outer) */}
+          <div className="flex flex-col justify-end pb-2 w-12 items-center">
+              {wards.map(renderBuffSquare)}
+          </div>
       </div>
 
       {/* Floating Combat Text */}
       {floatingText && (
         <div className="absolute top-10 z-50 animate-float-up pointer-events-none w-full text-center">
-          <span className="text-5xl font-[VT323] font-black tracking-widest" style={{ color: floatingText.color, textShadow: '4px 4px 0px #000' }}>
+          <span className="text-6xl font-['VT323'] font-black tracking-widest" style={{ color: floatingText.color, textShadow: '4px 4px 0px #000, -2px -2px 0 #000' }}>
             {floatingText.text}
           </span>
         </div>
       )}
 
       {/* Avatar */}
-      <div className={`relative w-48 h-48 mb-4 transition-all duration-300 ${animating ? 'scale-110 brightness-125' : ''}`}>
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-56 h-16 bg-indigo-900/50 border-4 border-indigo-500/30 rounded-[100%] animate-pulse"></div>
+      <div className={`relative w-56 h-56 mb-4 transition-all duration-300 ${animating ? 'scale-110 brightness-125' : ''}`}>
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-64 h-16 bg-black/40 blur-md rounded-[100%]"></div>
         <img 
           src={imgError ? getFallbackAvatar() : unit.avatarUrl} 
           alt={unit.name}
           onError={() => setImgError(true)}
-          className={`w-full h-full object-contain rendering-pixelated filter drop-shadow-[0_0_10px_rgba(0,0,0,0.8)] ${isPlayer ? 'scale-x-100' : '-scale-x-100'} ${unit.currentHp <= 0 ? 'grayscale opacity-50 blur-sm' : ''}`}
+          className={`w-full h-full object-contain rendering-pixelated filter drop-shadow-[0_4px_0_rgba(0,0,0,0.5)] ${isPlayer ? 'scale-x-100' : '-scale-x-100'} ${unit.currentHp <= 0 ? 'grayscale opacity-50 blur-sm' : ''}`}
         />
         {animating && <div className="absolute inset-0 border-4 border-white/50 rounded-full animate-ping"></div>}
       </div>
 
       {/* Stats Box */}
-      <div className="w-full bg-[#1a1b26] border-4 border-[#414868] p-2 rounded-sm shadow-[0_0_0_2px_#000]">
-        <div className="flex justify-between items-end mb-1 pb-1 border-b-2 border-[#414868]">
-          <span className="pixel-font text-xs text-yellow-400 uppercase tracking-wide drop-shadow-md">{unit.name}</span>
+      <div className="w-full bg-[#1a1b26] p-2 shadow-[0_0_0_4px_#000] relative">
+        <div className="flex justify-between items-end mb-1 pb-1 border-b-4 border-black">
+          <span className="font-['Press_Start_2P'] text-[10px] text-yellow-400 uppercase tracking-wider drop-shadow-md">{unit.name}</span>
           <img 
             src={iconError['main'] ? getFallbackSchoolIcon(unit.school) : SCHOOL_ICONS[unit.school]} 
-            className="w-6 h-6" 
+            className="w-6 h-6 drop-shadow-md" 
             alt="school"
             onError={() => handleIconError('main')}
           />
         </div>
-        <div className="relative h-6 bg-gray-800 border-2 border-black my-2">
-           <div className="absolute inset-0 bg-red-900/50"></div>
-           <div className="h-full bg-red-600 transition-all duration-500 ease-out relative" style={{ width: `${Math.max(0, Math.min(100, (unit.currentHp / unit.maxHp) * 100))}%` }}>
-                <div className="absolute top-0 right-0 bottom-0 w-1 bg-white/20"></div>
+        
+        {/* HP Bar */}
+        <div className="relative h-8 bg-gray-900 border-[3px] border-black my-2 shadow-[inset_0_0_10px_#000]">
+           <div className="absolute inset-0 bg-red-900/40"></div>
+           <div className="h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-500 ease-out relative" style={{ width: `${Math.max(0, Math.min(100, (unit.currentHp / unit.maxHp) * 100))}%` }}>
+                <div className="absolute top-0 right-0 bottom-0 w-1 bg-white/30"></div>
            </div>
-           <span className="absolute inset-0 flex items-center justify-center text-xs font-mono font-bold text-white drop-shadow-[1px_1px_0_#000]">
+           <span className="absolute inset-0 flex items-center justify-center text-lg font-['VT323'] text-white drop-shadow-[2px_2px_0_#000] tracking-widest">
              {unit.currentHp} / {unit.maxHp}
            </span>
         </div>
-        <div className="flex justify-center items-center gap-1 mt-2 h-8 bg-black/30 rounded border border-gray-700/50">
+        
+        {/* Pips */}
+        <div className="flex justify-center items-center gap-1 mt-3 h-10 bg-black/40 rounded border-2 border-gray-700/50">
           {renderPips()}
         </div>
       </div>

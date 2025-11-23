@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { Unit, Card, GameState, Buff, School, Language } from './types';
@@ -178,7 +177,7 @@ export default function App() {
          player: { ...prev.player, currentHp: prev.player.maxHp, pips: 1, powerPips: 0, buffs: [] },
          enemy: { ...INITIAL_ENEMY, currentHp: INITIAL_ENEMY.maxHp, pips: 1, powerPips: 0, buffs: [] }
       }));
-      setTimeout(() => drawCards(7, gameState.deck), 100);
+      setTimeout(() => drawCards(MAX_HAND_SIZE, gameState.deck), 100);
   };
 
   const addLog = (msg: string) => setCombatLog(prev => [msg, ...prev].slice(0, 8));
@@ -343,6 +342,15 @@ export default function App() {
     setGameState(prev => ({ ...prev, phase: 'ENEMY_THINKING' }));
     setTimeout(handleEnemyTurn, 1000);
   };
+  
+  const handleCardDiscard = (card: Card) => {
+      if (gameState.phase !== 'PLAYER_INPUT') return;
+      setGameState(prev => ({
+          ...prev,
+          hand: prev.hand.filter(c => c.id !== card.id),
+          discard: [...prev.discard, card]
+      }));
+  };
 
   const handlePass = async () => {
       if (gameState.phase !== 'PLAYER_INPUT') return;
@@ -392,14 +400,36 @@ export default function App() {
           if (totalSlots >= MAX_PIPS) return u;
           return { ...u, powerPips: getsPower ? u.powerPips + 1 : u.powerPips, pips: !getsPower ? u.pips + 1 : u.pips };
       };
-      setGameState(prev => ({
-          ...prev,
-          player: tickBuffs(addPip(prev.player)),
-          enemy: tickBuffs(addPip(prev.enemy)),
-          turn: prev.turn + 1,
-          phase: 'PLAYER_INPUT'
-      }));
-      drawCards(1);
+      setGameState(prev => {
+          const newState: GameState = {
+              ...prev,
+              player: tickBuffs(addPip(prev.player)),
+              enemy: tickBuffs(addPip(prev.enemy)),
+              turn: prev.turn + 1,
+              phase: 'PLAYER_INPUT'
+          };
+          return newState;
+      });
+      
+      // Auto-draw to fill hand to 7
+      // Using a timeout to allow state transition slightly, though function update is safer in next loop
+      setTimeout(() => {
+          setGameState(prev => {
+             const needed = MAX_HAND_SIZE - prev.hand.length;
+             if (needed <= 0 || prev.deck.length === 0) return prev;
+             
+             const newHand = [...prev.hand];
+             const sourceDeck = [...prev.deck];
+             for (let i = 0; i < needed; i++) {
+                 if (sourceDeck.length > 0) {
+                     const idx = Math.floor(Math.random() * sourceDeck.length);
+                     const card = sourceDeck.splice(idx, 1)[0];
+                     if (card) newHand.push({ ...card, id: generateId() });
+                 }
+             }
+             return { ...prev, hand: newHand, deck: sourceDeck };
+          });
+      }, 500);
   };
 
   return (
@@ -564,13 +594,15 @@ export default function App() {
 
       {['PLAYER_INPUT', 'ANIMATING', 'ENEMY_THINKING', 'ENEMY_ACTING', 'VICTORY', 'DEFEAT'].includes(gameState.phase) && (
         <>
-            <div className="relative z-10 p-4 w-full flex justify-center">
-                <div className="absolute left-4 top-4 bg-black/80 p-2 rounded border-2 border-gray-700 shadow-lg">
-                    <h1 className="text-2xl text-yellow-500 pixel-font drop-shadow-md">DUEL ARENA</h1>
-                    <div className="text-sm text-gray-400 font-mono">{t.ROUND} {gameState.turn}</div>
-                </div>
-                <div className="w-96 h-32 bg-black/80 rounded border-2 border-gray-700 p-2 overflow-y-auto font-[VT323] text-lg leading-tight shadow-xl scrollbar-thin text-center">
-                    {combatLog.map((log, i) => <div key={i} className="mb-1 text-green-300 border-b border-gray-800/50">{log}</div>)}
+            <div className="relative z-10 p-4 w-full flex justify-center pointer-events-none">
+                <div className="absolute left-1/2 -translate-x-1/2 top-24 w-96 z-40">
+                    <div className="bg-black/80 p-1 rounded border-2 border-gray-700 shadow-lg text-center mb-1">
+                        <h1 className="text-xl text-yellow-500 pixel-font drop-shadow-md">DUEL ARENA</h1>
+                        <div className="text-xs text-gray-400 font-mono">{t.ROUND} {gameState.turn}</div>
+                    </div>
+                    <div className="h-24 bg-black/80 rounded border-2 border-gray-700 p-2 overflow-y-auto font-[VT323] text-lg leading-tight shadow-xl scrollbar-thin text-center pointer-events-auto">
+                        {combatLog.map((log, i) => <div key={i} className="mb-1 text-green-300 border-b border-gray-800/50">{log}</div>)}
+                    </div>
                 </div>
             </div>
 
@@ -598,14 +630,22 @@ export default function App() {
             )}
 
             <div className="relative z-20 h-64 w-full bg-[#0c0c0e] border-t-4 border-[#27272a] shadow-[0_-10px_20px_rgba(0,0,0,0.8)] flex items-center justify-center">
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#27272a] px-6 py-1 rounded-t-lg border-t-2 border-x-2 border-gray-600">
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#27272a] px-6 py-1 rounded-t-lg border-2 border-gray-600 shadow-md">
                     <span className="text-xs font-bold text-gray-300">{t.HAND}: {gameState.hand.length} / 7</span>
                 </div>
                 <div className="flex gap-4 px-4 overflow-x-auto py-4 w-full justify-center">
                     {gameState.hand.map((card) => {
                         const cost = calculatePipCost(gameState.player, card.pips, card.school);
                         const canAfford = !!cost && cost.canAfford && gameState.phase === 'PLAYER_INPUT';
-                        return <CardItem key={card.id} card={card} canAfford={canAfford} disabled={gameState.phase !== 'PLAYER_INPUT'} onClick={() => handlePlayerCardSelect(card)} language={language} />;
+                        return <CardItem 
+                            key={card.id} 
+                            card={card} 
+                            canAfford={canAfford} 
+                            disabled={gameState.phase !== 'PLAYER_INPUT'} 
+                            onClick={() => handlePlayerCardSelect(card)} 
+                            onDiscard={() => handleCardDiscard(card)}
+                            language={language} 
+                        />;
                     })}
                 </div>
             </div>

@@ -1,4 +1,5 @@
 
+
 import { Card, School, Language } from './types';
 
 export const MAX_HAND_SIZE = 7;
@@ -109,7 +110,8 @@ export const TRANSLATIONS = {
     BACK: "BACK",
     GENERATE: "GENERATE",
     PROMPT_PLACEHOLDER: "E.g. A fire wizard with a staff...",
-    SET_AVATAR: "SET AVATAR"
+    SET_AVATAR: "SET AVATAR",
+    DISCARD_HINT: "Right click to discard"
   },
   CN: {
     PASS: "跳过",
@@ -140,7 +142,8 @@ export const TRANSLATIONS = {
     BACK: "返回",
     GENERATE: "生成",
     PROMPT_PLACEHOLDER: "例如：手持法杖的火系法师...",
-    SET_AVATAR: "设为头像"
+    SET_AVATAR: "设为头像",
+    DISCARD_HINT: "右键点击弃牌"
   }
 };
 
