@@ -67,7 +67,7 @@ export interface GameState {
   hand: Card[];
   discard: Card[];
   turn: number;
-  phase: 'SCHOOL_SELECTION' | 'LOBBY' | 'DECK_BUILDING' | 'PLAYER_INPUT' | 'ANIMATING' | 'ENEMY_THINKING' | 'ENEMY_ACTING' | 'VICTORY' | 'DEFEAT';
+  phase: 'SCHOOL_SELECTION' | 'LOBBY' | 'DECK_BUILDING' | 'ART_GENERATION' | 'PLAYER_INPUT' | 'ANIMATING' | 'ENEMY_THINKING' | 'ENEMY_ACTING' | 'VICTORY' | 'DEFEAT';
   messages: string[];
   lastAction?: {
     card: Card;
