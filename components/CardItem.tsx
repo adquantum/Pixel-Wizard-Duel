@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card, Language } from '../types';
-import { SCHOOL_COLORS, SCHOOL_ICONS, TYPE_ICONS, generateFallbackAsset, getFallbackSchoolIcon } from '../constants';
+import { SCHOOL_COLORS, TYPE_ICONS, getFallbackSchoolIcon } from '../constants';
 
 interface CardItemProps {
   card: Card;
@@ -17,11 +17,10 @@ export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, di
   const desc = language === 'CN' ? card.descriptionCN : card.description;
   
   const [artError, setArtError] = useState(false);
-  const [iconError, setIconError] = useState(false);
-
-  const iconSrc = iconError ? getFallbackSchoolIcon(card.school) : card.icon;
-  const artSrc = artError ? generateFallbackAsset(card.school, card.type) : card.assetUrl;
+  
+  // Use the Type Icon (Fist, Shield, etc.) as the fallback image center
   const typeIconSrc = TYPE_ICONS[card.type] || TYPE_ICONS.ATTACK;
+  const schoolIconFallback = getFallbackSchoolIcon(card.school);
 
   return (
     <div 
@@ -40,23 +39,40 @@ export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, di
           <span className={`truncate font-[VT323] text-lg tracking-tight ${language === 'CN' ? 'font-sans text-xs pt-1' : ''}`}>{name}</span>
         </div>
 
-        {/* Art */}
+        {/* Art Area */}
         <div className="h-28 bg-[#09090b] relative flex items-center justify-center overflow-hidden group-hover:brightness-110">
+             {!artError ? (
+                 <img 
+                    src={card.assetUrl} 
+                    alt="spell" 
+                    className="w-20 h-20 object-contain drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]"
+                    onError={() => setArtError(true)}
+                 />
+             ) : (
+                 // FALLBACK LAYOUT: Show Type Icon in center if main art is missing
+                 <div className="relative w-full h-full flex items-center justify-center">
+                    {/* Faint School Icon in background */}
+                    <div className="absolute inset-0 opacity-10 flex items-center justify-center scale-150">
+                        <img src={schoolIconFallback} className="w-24 h-24 grayscale" alt="bg" />
+                    </div>
+                    {/* Type Icon (e.g. Damage Fist) in center */}
+                    <img 
+                        src={typeIconSrc} 
+                        className="w-16 h-16 object-contain drop-shadow-[0_4px_0_rgba(0,0,0,0.5)]" 
+                        alt="type fallback" 
+                    />
+                 </div>
+             )}
+
+             {/* Watermark (Bottom Right) */}
              <img 
-                src={artSrc} 
-                alt="spell" 
-                className="w-20 h-20 object-contain drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]"
-                onError={() => setArtError(true)}
-             />
-             {/* Watermark */}
-             <img 
-                src={getFallbackSchoolIcon(card.school)} 
+                src={schoolIconFallback} 
                 className="absolute -right-4 -bottom-4 w-24 h-24 opacity-10 pointer-events-none" 
                 alt="wm" 
              />
         </div>
 
-        {/* Stats */}
+        {/* Stats Bar */}
         <div className="h-5 bg-black/50 flex justify-between items-center px-1 border-t-2 border-b-2 border-[#d4b483]">
              <div className="text-yellow-400 font-bold text-xs font-[Press Start 2P] pl-1">
                 {card.pips}<span className="text-[8px]">p</span>
@@ -69,7 +85,7 @@ export const CardItem: React.FC<CardItemProps> = ({ card, canAfford, onClick, di
              </div>
         </div>
 
-        {/* Desc */}
+        {/* Description */}
         <div className="flex-1 bg-[#e7e5e4] p-1 text-center flex items-center justify-center relative">
             <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `repeating-linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000)`, backgroundSize: '4px 4px' }}></div>
             <p className={`text-[10px] leading-3 font-serif font-bold text-gray-900 z-10 px-1 ${language === 'CN' ? 'font-sans text-[9px]' : ''}`}>

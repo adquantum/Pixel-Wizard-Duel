@@ -40,25 +40,6 @@ const SCHOOL_SVG_PATHS: Record<School, string> = {
     BALANCE: `M15 2 L17 2 L17 8 L27 8 L27 14 L23 14 L23 10 L17 10 L17 20 L21 22 L21 18 L25 18 L25 24 L19 24 L19 28 L13 28 L13 24 L7 24 L7 18 L11 18 L11 22 L15 20 L15 10 L9 10 L9 14 L5 14 L5 8 L15 8 Z`
 };
 
-// Generates the fallback main illustration for cards
-export const generateFallbackAsset = (school: School, type: string): string => {
-    const color = SCHOOL_COLORS[school];
-    const bg = type === 'ATTACK' ? '#111' : type === 'HEAL' ? '#020' : '#210';
-    const path = SCHOOL_SVG_PATHS[school];
-    
-    const svg = `
-    <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
-        <rect x="0" y="0" width="64" height="64" fill="${bg}"/>
-        <rect x="2" y="2" width="60" height="60" fill="none" stroke="${color}" stroke-width="2"/>
-        <path d="${path}" transform="scale(1.5) translate(6,6)" fill="none" stroke="${color}" stroke-width="1" opacity="0.3" />
-        <text x="32" y="44" font-family="monospace" font-size="24" text-anchor="middle" fill="${color}">
-            ${type === 'ATTACK' ? '⚔️' : type === 'HEAL' ? '💚' : type === 'BLADE' ? '🗡️' : type === 'TRAP' ? '🕸️' : type === 'SHIELD' ? '🛡️' : '🌍'}
-        </text>
-    </svg>
-    `;
-    return svgToDataUri(svg);
-};
-
 export const getFallbackSchoolIcon = (school: School) => svgToDataUri(createPixelIcon(SCHOOL_COLORS[school], SCHOOL_SVG_PATHS[school]));
 
 // --- ASSET PATH CONFIGURATION ---
